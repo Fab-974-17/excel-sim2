@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Excel-like Simulator (1200x675 + Formules)</title>
+  <title>Excel-like Simulator 1200x675 (Formules FR)</title>
 
-  <!-- HyperFormula (moteur de calcul) -->
+  <!-- Moteur de calcul (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/hyperformula@2.7.1/dist/hyperformula.full.min.js"></script>
 
   <style>
@@ -13,6 +13,7 @@
       --W:1200;
       --H:675;
 
+      /* Excel-like theme */
       --ui:#f3f4f6;
       --ui2:#e5e7eb;
       --line:#d1d5db;
@@ -20,15 +21,20 @@
       --muted:#6b7280;
       --accent:#1d4ed8;
 
+      /* Grid sizing */
       --cellW:110px;
       --cellH:28px;
       --rowHeaderW:52px;
       --colHeaderH:26px;
 
+      /* IMPORTANT: set by JS at runtime (robust for iframes) */
+      --rows: 24;
+      --cols: 14;
+
       --font: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
     }
 
-    html,body{height:100%;margin:0;background:#0000;font-family:var(--font);}
+    html,body{height:100%;margin:0;background:transparent;font-family:var(--font);}
 
     .stage{
       width:100%;
@@ -36,17 +42,17 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      background:transparent;
       overflow:hidden;
+      background:transparent;
     }
 
     .canvas{
       width:calc(var(--W) * 1px);
       height:calc(var(--H) * 1px);
-      background:white;
-      box-shadow:0 18px 50px rgba(0,0,0,.18);
+      background:#fff;
       border-radius:14px;
       overflow:hidden;
+      box-shadow:0 18px 50px rgba(0,0,0,.18);
       transform-origin:center center;
     }
 
@@ -62,14 +68,14 @@
     .badge{
       display:flex;align-items:center;gap:8px;
       padding:8px 10px;border-radius:10px;
-      background:#ffffff;border:1px solid var(--ui2);
-      font-weight:700;color:var(--text);
+      background:#fff;border:1px solid var(--ui2);
+      font-weight:800;color:var(--text);
     }
     .badge .dot{
       width:10px;height:10px;border-radius:999px;background:var(--accent);
       box-shadow:0 0 0 3px rgba(29,78,216,.15);
     }
-    .tabsRibbon{display:flex;gap:12px;color:var(--muted);font-weight:600;font-size:13px}
+    .tabsRibbon{display:flex;gap:12px;color:var(--muted);font-weight:700;font-size:13px}
     .tabsRibbon .active{color:var(--text);position:relative}
     .tabsRibbon .active:after{
       content:"";position:absolute;left:0;right:0;bottom:-10px;height:3px;border-radius:99px;background:var(--accent);
@@ -80,12 +86,11 @@
       background:#fff;
       border-radius:10px;
       padding:8px 10px;
-      font-weight:700;
+      font-weight:800;
       font-size:13px;
       cursor:pointer;
       color:var(--text);
     }
-    .btn.primary{border-color:rgba(29,78,216,.35); background:rgba(29,78,216,.08); color:#0b2a7a}
 
     .fxbar{
       height:46px;
@@ -102,7 +107,7 @@
       border:1px solid var(--line);
       border-radius:10px;
       display:flex;align-items:center;justify-content:center;
-      font-weight:800;
+      font-weight:900;
       color:#0b2a7a;
       background:#f8fafc;
       user-select:none;
@@ -128,31 +133,36 @@
       background:#fff;
     }
     .status{
-      min-width:260px;
+      min-width:300px;
       font-size:13px;
       color:var(--muted);
       text-align:right;
       user-select:none;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
-    .status.ok{color:#16a34a;font-weight:700}
-    .status.bad{color:#dc2626;font-weight:700}
+    .status.ok{color:#16a34a;font-weight:900}
+    .status.bad{color:#dc2626;font-weight:900}
 
     .sheetWrap{
       height:calc(var(--H) * 1px - 54px - 46px - 44px);
-      background:#fff;
       position:relative;
+      background:#fff;
     }
-
     .work{
       position:absolute;inset:0;
       overflow:auto;
       background:#fff;
     }
 
+    /* ====== KEY FIX: grid dimensions are explicit, based on :root vars ====== */
     .grid{
       position:relative;
       width: calc(var(--rowHeaderW) + var(--cols) * var(--cellW));
       height: calc(var(--colHeaderH) + var(--rows) * var(--cellH));
+      min-width: calc(var(--rowHeaderW) + var(--cols) * var(--cellW));
+      min-height: calc(var(--colHeaderH) + var(--rows) * var(--cellH));
     }
 
     .corner{
@@ -177,7 +187,7 @@
       display:flex;align-items:center;justify-content:center;
       border-right:1px solid var(--line);
       font-size:12px;
-      font-weight:800;
+      font-weight:900;
       color:#374151;
       user-select:none;
     }
@@ -193,7 +203,7 @@
       display:flex;align-items:center;justify-content:center;
       border-bottom:1px solid var(--line);
       font-size:12px;
-      font-weight:800;
+      font-weight:900;
       color:#374151;
       user-select:none;
     }
@@ -205,6 +215,11 @@
       display:grid;
       grid-template-columns: repeat(var(--cols), var(--cellW));
       grid-auto-rows: var(--cellH);
+
+      /* Extra safety */
+      min-width:  calc(var(--cols) * var(--cellW));
+      min-height: calc(var(--rows) * var(--cellH));
+
       border-top:1px solid var(--line);
       border-left:1px solid var(--line);
       background:#fff;
@@ -222,8 +237,8 @@
       text-overflow:ellipsis;
       user-select:none;
       cursor:cell;
+      background:#fff;
     }
-
     .cell.selected{
       outline:2px solid var(--accent);
       outline-offset:-2px;
@@ -262,7 +277,7 @@
       padding:9px 12px;
       border-radius:10px;
       border:1px solid transparent;
-      font-weight:800;
+      font-weight:900;
       font-size:13px;
       color:#374151;
       user-select:none;
@@ -294,7 +309,7 @@
       <div class="fxbar">
         <div class="nameBox" id="nameBox">A1</div>
         <div class="fx">fx</div>
-        <input class="fxInput" id="fxInput" placeholder='Tape une valeur ou une formule (ex: =SI(NBCAR(A2)>3;"OK";"NON"))' />
+        <input class="fxInput" id="fxInput" placeholder='Valeur ou formule (ex: =SI(NBCAR(A2)>3;"OK";"NON"))' />
         <div class="status" id="status">Clique une cellule puis tape.</div>
       </div>
 
@@ -323,17 +338,18 @@
   const ROWS = 24;
   const COLS = 14;
 
+  // FIX: push vars to :root (documentElement) for iframe robustness
+  document.documentElement.style.setProperty("--rows", ROWS);
+  document.documentElement.style.setProperty("--cols", COLS);
+
   const cellW = 110, cellH = 28, rowHeaderW = 52, colHeaderH = 26;
 
-  /* ====== SHEETS + RAW INPUT (FR) ======
-     On stocke toujours ce que l'utilisateur a tapé (FR) dans raw.
-     On envoie au moteur HyperFormula une version "EN" (traduite) si c'est une formule. */
+  /* ====== SHEETS ====== */
   const sheets = [
     { name: "Feuil1", raw: new Map() },
     { name: "Exercices", raw: new Map() },
     { name: "Résultats", raw: new Map() },
   ];
-
   let activeSheet = 0;
   let selected = { r: 1, c: 1 };
 
@@ -352,9 +368,6 @@
   const status = el("status");
   const editBox = el("editBox");
   const editInput = el("editInput");
-
-document.documentElement.style.setProperty("--rows", ROWS);
-document.documentElement.style.setProperty("--cols", COLS);
 
   /* ====== UTILS ====== */
   const colName = (n) => {
@@ -383,16 +396,11 @@ document.documentElement.style.setProperty("--cols", COLS);
     else sheets[activeSheet].raw.set(key(r,c), val);
   }
 
-  /* ====== FR -> EN FORMULA TRANSLATION ======
-     - Remplace séparateur d'arguments ; -> ,
-     - Remplace fonctions FR -> EN
-     - Garde les guillemets "..." tels quels
-  */
+  /* ====== FR -> EN FORMULA TRANSLATION ====== */
   function frToEnFormula(fr){
-    // Si ce n'est pas une formule, on renvoie tel quel
     if(!fr || fr[0] !== "=") return fr;
 
-    // Remplacer ; par , (Excel FR) hors guillemets
+    // ; -> , outside quotes
     let out = "";
     let inQuotes = false;
     for(let i=0;i<fr.length;i++){
@@ -402,80 +410,86 @@ document.documentElement.style.setProperty("--cols", COLS);
       else out += ch;
     }
 
-    // Map fonctions (A + C)
+    // Functions FR -> EN (A + C)
     const fnMap = [
+      ["NB.SI", "COUNTIF"],
+      ["RECHERCHEV", "VLOOKUP"],
+      ["CONCATENER", "CONCATENATE"],
       ["GAUCHE", "LEFT"],
       ["DROITE", "RIGHT"],
       ["STXT", "MID"],
-      ["CONCATENER", "CONCATENATE"],
       ["NBCAR", "LEN"],
       ["SI", "IF"],
       ["ET", "AND"],
       ["OU", "OR"],
-      ["RECHERCHEV", "VLOOKUP"],
-      ["NB.SI", "COUNTIF"],
     ];
 
-    // Remplacer uniquement les noms de fonction suivis d'une parenthèse (évite de toucher du texte)
     for(const [frName, enName] of fnMap){
       const re = new RegExp(`\\b${frName}\\s*\\(`, "gi");
       out = out.replace(re, `${enName}(`);
     }
-
     return out;
   }
 
-  /* ====== CALC ENGINE (HyperFormula) ====== */
-  if(!window.HyperFormula){
-    setStatus("Erreur: HyperFormula non chargé (CDN bloqué).", "bad");
-    return;
-  }
+  /* ====== CALC ENGINE ====== */
+  let hf = null;
+  let sheetIds = [];
 
-  // On crée un moteur avec 3 feuilles
-  const hf = HyperFormula.buildEmpty({
-    licenseKey: "gpl-v3", // usage open-source
-  });
+  function initEngine(){
+    if(!window.HyperFormula){
+      setStatus("⚠️ HyperFormula non chargé (CDN bloqué). Les formules seront affichées en texte.", "bad");
+      hf = null;
+      sheetIds = [];
+      return;
+    }
 
-  const sheetIds = sheets.map(s => hf.addSheet(s.name));
-  // Préparer une grille vide (ROWS x COLS) dans chaque feuille
-  for(const sid of sheetIds){
+    hf = HyperFormula.buildEmpty({ licenseKey: "gpl-v3" });
+    sheetIds = sheets.map(s => hf.addSheet(s.name));
+
     const empty = Array.from({length: ROWS}, () => Array.from({length: COLS}, () => null));
-    hf.setSheetContent(sid, empty);
+    for(const sid of sheetIds){
+      hf.setSheetContent(sid, empty);
+    }
   }
 
   function engineSetCell(r,c,rawValue){
+    setRaw(r,c,rawValue);
+
+    if(!hf){
+      // fallback: no calc engine
+      return;
+    }
+
     const sid = sheetIds[activeSheet];
     const row0 = r-1, col0 = c-1;
 
-    // Stocker ce que l'utilisateur a tapé
-    setRaw(r,c,rawValue);
-
-    // Envoyer au moteur
     if(rawValue && rawValue[0] === "="){
       const en = frToEnFormula(rawValue);
       hf.setCellContents({ sheet: sid, row: row0, col: col0 }, en);
     } else {
-      // nombre vs texte
       const trimmed = (rawValue ?? "").trim();
-      const asNumber = trimmed !== "" && !Number.isNaN(Number(trimmed)) ? Number(trimmed) : rawValue;
-      hf.setCellContents({ sheet: sid, row: row0, col: col0 }, asNumber === "" ? null : asNumber);
+      const isNum = trimmed !== "" && !Number.isNaN(Number(trimmed));
+      const value = rawValue === "" ? null : (isNum ? Number(trimmed) : rawValue);
+      hf.setCellContents({ sheet: sid, row: row0, col: col0 }, value);
     }
   }
 
   function engineGetDisplay(r,c){
+    const raw = getRaw(r,c);
+
+    if(!hf){
+      // fallback
+      return raw || "";
+    }
+
     const sid = sheetIds[activeSheet];
     const v = hf.getCellValue({ sheet: sid, row: r-1, col: c-1 });
 
-    // Gestion erreurs HyperFormula
-    if(v && typeof v === "object" && v.value != null && v.type){
-      // parfois erreurs sous forme d'objet
-      return String(v.value);
-    }
-    if(typeof v === "string" || typeof v === "number" || typeof v === "boolean"){
-      return String(v);
-    }
     if(v === null || v === undefined) return "";
-    return String(v);
+    if(typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+
+    // Error objects → stringify
+    try { return String(v); } catch { return "#ERR"; }
   }
 
   /* ====== RENDER ====== */
@@ -487,6 +501,7 @@ document.documentElement.style.setProperty("--cols", COLS);
       d.textContent=colName(c);
       colHeaderEl.appendChild(d);
     }
+
     rowHeaderEl.innerHTML = "";
     for(let r=1;r<=ROWS;r++){
       const d=document.createElement("div");
@@ -509,6 +524,10 @@ document.documentElement.style.setProperty("--cols", COLS);
 
   function renderCells(){
     cellsEl.innerHTML = "";
+
+    // DEBUG safety: ensure CSS vars exist
+    // (no console in Genially often; but we keep it simple)
+
     for(let r=1;r<=ROWS;r++){
       for(let c=1;c<=COLS;c++){
         const d = document.createElement("div");
@@ -516,11 +535,13 @@ document.documentElement.style.setProperty("--cols", COLS);
         d.textContent = engineGetDisplay(r,c);
         d.dataset.r = r;
         d.dataset.c = c;
+
         d.addEventListener("mousedown", (e) => {
           e.preventDefault();
           select(r,c);
         });
         d.addEventListener("dblclick", () => beginEdit(r,c));
+
         cellsEl.appendChild(d);
       }
     }
@@ -534,18 +555,14 @@ document.documentElement.style.setProperty("--cols", COLS);
     if(node) node.classList.add("selected");
 
     nameBox.textContent = addr(selected.r, selected.c);
-    fxInput.value = getRaw(selected.r, selected.c) || engineGetDisplay(selected.r, selected.c);
-  }
 
-  function refreshCell(r,c){
-    const idx = (r-1)*COLS + (c-1);
-    const node = cellsEl.querySelectorAll(".cell")[idx];
-    if(node) node.textContent = engineGetDisplay(r,c);
+    const raw = getRaw(selected.r, selected.c);
+    fxInput.value = raw !== "" ? raw : engineGetDisplay(selected.r, selected.c);
   }
 
   function refreshAllCells(){
     const nodes = cellsEl.querySelectorAll(".cell");
-    let i=0;
+    let i = 0;
     for(let r=1;r<=ROWS;r++){
       for(let c=1;c<=COLS;c++){
         nodes[i++].textContent = engineGetDisplay(r,c);
@@ -559,7 +576,9 @@ document.documentElement.style.setProperty("--cols", COLS);
     renderCells();
     updateSelectionUI();
     ensureSelectionVisible();
-    setStatus('Formules FR actives: GAUCHE/DROITE/STXT/CONCATENER/NBCAR + SI/ET/OU/RECHERCHEV/NB.SI', "ok");
+
+    if(hf) setStatus("✅ Formules FR actives (A + C). Clique une cellule puis tape.", "ok");
+    else setStatus("⚠️ Mode sans moteur : les formules resteront du texte.", "bad");
   }
 
   /* ====== SELECTION + VISIBILITY ====== */
@@ -613,16 +632,18 @@ document.documentElement.style.setProperty("--cols", COLS);
 
   function hideEditor(commit){
     if(editBox.style.display !== "block") return;
+
     if(commit){
       const v = editInput.value ?? "";
       engineSetCell(selected.r, selected.c, v);
-      // recalcul & refresh
       refreshAllCells();
-      fxInput.value = getRaw(selected.r, selected.c) || engineGetDisplay(selected.r, selected.c);
+      const raw = getRaw(selected.r, selected.c);
+      fxInput.value = raw !== "" ? raw : engineGetDisplay(selected.r, selected.c);
       setStatus("Enregistré ✅", "ok");
     } else {
       setStatus("Annulé", "");
     }
+
     editBox.style.display = "none";
   }
 
@@ -642,6 +663,7 @@ document.documentElement.style.setProperty("--cols", COLS);
       return;
     }
 
+    // printable char starts editing
     if(e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey){
       beginEdit();
       editInput.value = e.key;
@@ -667,68 +689,72 @@ document.documentElement.style.setProperty("--cols", COLS);
       e.preventDefault();
       engineSetCell(selected.r, selected.c, fxInput.value ?? "");
       refreshAllCells();
-      fxInput.value = getRaw(selected.r, selected.c) || engineGetDisplay(selected.r, selected.c);
+      const raw = getRaw(selected.r, selected.c);
+      fxInput.value = raw !== "" ? raw : engineGetDisplay(selected.r, selected.c);
       setStatus("Enregistré ✅", "ok");
       fxInput.blur();
     }
     if(e.key === "Escape"){
       e.preventDefault();
-      fxInput.value = getRaw(selected.r, selected.c) || engineGetDisplay(selected.r, selected.c);
+      const raw = getRaw(selected.r, selected.c);
+      fxInput.value = raw !== "" ? raw : engineGetDisplay(selected.r, selected.c);
       setStatus("Annulé", "");
       fxInput.blur();
     }
   });
 
   fxInput.addEventListener("focus", () => hideEditor(true));
-
   workEl.addEventListener("scroll", () => {
     if(editBox.style.display === "block") positionEditor();
   });
 
-  /* ====== PREFILL EXEMPLES (A + C) ====== */
+  /* ====== PREFILL ====== */
   function prefillExamples(){
-    // Feuil1
     activeSheet = 0;
-    engineSetCell(2,1,'DUPONT');            // A2
-    engineSetCell(3,1,'KURACOOL');          // A3
-    engineSetCell(4,1,'REUNION');           // A4
-    engineSetCell(2,2,'=GAUCHE(A2;3)');     // B2
-    engineSetCell(3,2,'=DROITE(A3;2)');     // B3
-    engineSetCell(4,2,'=STXT(A4;2;4)');     // B4
-    engineSetCell(2,3,'=NBCAR(A2)');        // C2
-    engineSetCell(3,3,'=CONCATENER("ID-";A3)'); // C3
 
-    // Logique (SI/ET/OU)
-    engineSetCell(6,1,'ABCD');              // A6
-    engineSetCell(6,2,'=SI(NBCAR(A6)>3;"OK";"NON")'); // B6
-    engineSetCell(7,1,'X');                 // A7
-    engineSetCell(7,2,'Y');                 // B7
-    engineSetCell(7,3,'=SI(ET(A7="X";B7="Y");"MATCH";"NO")'); // C7
-    engineSetCell(8,3,'=SI(OU(A7="Z";B7="Y");"OUI";"NON")');  // C8
+    engineSetCell(2,1,'DUPONT');
+    engineSetCell(3,1,'KURACOOL');
+    engineSetCell(4,1,'REUNION');
 
-    // RECHERCHEV (VLOOKUP) + NB.SI (COUNTIF)
+    engineSetCell(2,2,'=GAUCHE(A2;3)');
+    engineSetCell(3,2,'=DROITE(A3;2)');
+    engineSetCell(4,2,'=STXT(A4;2;4)');
+
+    engineSetCell(2,3,'=NBCAR(A2)');
+    engineSetCell(3,3,'=CONCATENER("ID-";A3)');
+
+    engineSetCell(6,1,'ABCD');
+    engineSetCell(6,2,'=SI(NBCAR(A6)>3;"OK";"NON")');
+
     engineSetCell(10,1,'Code'); engineSetCell(10,2,'Libellé');
     engineSetCell(11,1,'A');    engineSetCell(11,2,'Alpha');
     engineSetCell(12,1,'B');    engineSetCell(12,2,'Beta');
     engineSetCell(13,1,'C');    engineSetCell(13,2,'Gamma');
-    engineSetCell(11,4,'B'); // D11 clé
-    engineSetCell(11,5,'=RECHERCHEV(D11;A11:B13;2;FAUX)'); // E11
-    engineSetCell(15,1,'A'); engineSetCell(16,1,'B'); engineSetCell(17,1,'A');
-    engineSetCell(15,2,'=NB.SI(A15:A17;"A")'); // B15
 
-    refreshAllCells();
-    selected = { r:2, c:2 };
+    engineSetCell(11,4,'B');
+    engineSetCell(11,5,'=RECHERCHEV(D11;A11:B13;2;FAUX)');
+
+    engineSetCell(15,1,'A'); engineSetCell(16,1,'B'); engineSetCell(17,1,'A');
+    engineSetCell(15,2,'=NB.SI(A15:A17;"A")');
+
     renderAll();
+    selected = { r:2, c:2 };
+    updateSelectionUI();
+    refreshAllCells();
+    setStatus("Exemples chargés ✅", "ok");
   }
 
   /* ====== RESET ====== */
   function resetAll(){
-    // Clear raw maps + engine sheet contents
     sheets.forEach(s => s.raw.clear());
-    for(const sid of sheetIds){
-      const empty = Array.from({length: ROWS}, () => Array.from({length: COLS}, () => null));
-      hf.setSheetContent(sid, empty);
+
+    if(hf){
+      for(const sid of sheetIds){
+        const empty = Array.from({length: ROWS}, () => Array.from({length: COLS}, () => null));
+        hf.setSheetContent(sid, empty);
+      }
     }
+
     activeSheet = 0;
     selected = { r:1, c:1 };
     hideEditor(false);
@@ -739,7 +765,7 @@ document.documentElement.style.setProperty("--cols", COLS);
   el("prefillBtn").addEventListener("click", prefillExamples);
   el("clearBtn").addEventListener("click", resetAll);
 
-  /* ====== AUTO SCALE TO FIT IFRAME ====== */
+  /* ====== SCALE ====== */
   function scaleToFit(){
     const vw = stage.clientWidth;
     const vh = stage.clientHeight;
@@ -749,6 +775,7 @@ document.documentElement.style.setProperty("--cols", COLS);
   window.addEventListener("resize", scaleToFit);
 
   /* ====== INIT ====== */
+  initEngine();
   renderAll();
   scaleToFit();
 })();
