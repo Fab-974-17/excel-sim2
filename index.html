@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Excel-like Simulator</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#0f1a2e;
+      --grid:#1a2a46;
+      --text:#e9eefc;
+      --muted:#9fb0d0;
+      --accent:#3aa0ff;
+      --ok:#21c55d;
+      --bad:#ef4444;
+      --cellW:120px;
+      --cellH:34px;
+      --rowHeaderW:58px;
+      --colHeaderH:34px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    body{margin:0;background:linear-gradient(180deg,var(--bg),#060b14);color:var(--text);}
+    .app{max-width:1200px;margin:18px auto;padding:14px;}
+    .bar{display:flex;gap:10px;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08); border-radius:16px;padding:12px 14px;backdrop-filter: blur(8px);}
+    .title{font-weight:700}
+    .sub{color:var(--muted);font-size:13px}
+    .pill{padding:6px 10px;border-radius:999px;background:rgba(58,160,255,.12);border:1px solid rgba(58,160,255,.25);color:#cfe8ff;font-size:12px}
+    .gridWrap{margin-top:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;overflow:hidden;}
+    .sheetTabs{display:flex;gap:6px;padding:10px;background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,255,255,.08)}
+    .tab{cursor:pointer;color:var(--muted);padding:8px 12px;border-radius:12px;border:1px solid transparent}
+    .tab.active{color:var(--text);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.10)}
+    .work{position:relative;height:520px;overflow:auto;}
+    .grid{
+      position:relative;
+      width: calc(var(--rowHeaderW) + var(--cols) * var(--cellW));
+      height: calc(var(--colHeaderH) + var(--rows) * var(--cellH));
+    }
+    .corner{
+      position:sticky;top:0;left:0;z-index:5;
+      width:var(--rowHeaderW);height:var(--colHeaderH);
+      background:rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.10);border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .colHeader{
+      position:sticky;top:0;z-index:4;
+      display:flex;left:var(--rowHeaderW);height:var(--colHeaderH);
+      background:rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .colHeader .h{
+      width:var(--cellW);height:var(--colHeaderH);display:flex;align-items:center;justify-content:center;
+      border-right:1px solid rgba(255,255,255,.08);color:#dbe7ff;font-size:13px;font-weight:600;
+    }
+    .rowHeader{
+      position:sticky;left:0;z-index:3;
+      top:var(--colHeaderH);width:var(--rowHeaderW);
+      background:rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.10);
+    }
+    .rowHeader .r{
+      height:var(--cellH);display:flex;align-items:center;justify-content:center;
+      border-bottom:1px solid rgba(255,255,255,.08);color:#dbe7ff;font-size:13px;font-weight:600;
+    }
+    .cells{
+      position:absolute;left:var(--rowHeaderW);top:var(--colHeaderH);
+      display:grid;
+      grid-template-columns: repeat(var(--cols), var(--cellW));
+      grid-auto-rows: var(--cellH);
+      border-top:1px solid rgba(255,255,255,.08);
+      border-left:1px solid rgba(255,255,255,.08);
+    }
+    .cell{
+      box-sizing:border-box;
+      border-right:1px solid rgba(255,255,255,.08);
+      border-bottom:1px solid rgba(255,255,255,.08);
+      padding:6px 8px;
+      font-size:13px;
+      color:var(--text);
+      background:rgba(0,0,0,.05);
+      outline:none;
+      user-select:none;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .cell[data-selected="1"]{
+      box-shadow: inset 0 0 0 2px var(--accent);
+      background:rgba(58,160,255,.10);
+    }
+    .fx{
+      margin-top:10px;display:flex;gap:10px;align-items:center;
+      background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;padding:10px 12px;
+    }
+    .nameBox{width:82px;text-align:center;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.10);color:#cfe8ff;font-weight:700}
+    .fxLabel{color:var(--muted);font-weight:700}
+    .fxInput{
+      flex:1;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.10);color:var(--text);outline:none;
+    }
+    .btn{
+      cursor:pointer;border:none;padding:9px 12px;border-radius:12px;
+      background:rgba(58,160,255,.18);border:1px solid rgba(58,160,255,.30);color:#d8efff;font-weight:700;
+    }
+    .btn.secondary{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.10);color:var(--text)}
+    .status{margin-left:auto;color:var(--muted);font-size:13px}
+    .status.ok{color:var(--ok)} .status.bad{color:var(--bad)}
+    .hint{margin-top:10px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="bar">
+      <div>
+        <div class="title">Simulateur Excel (e-learning)</div>
+        <div class="sub">Clique une cellule, double-clique pour éditer. Onglets en bas. Mode exercice simple.</div>
+      </div>
+      <div class="pill" id="modePill">Mode : Libre</div>
+    </div>
+
+    <div class="fx">
+      <div class="nameBox" id="nameBox">A1</div>
+      <div class="fxLabel">fx</div>
+      <input class="fxInput" id="fxInput" placeholder="Saisis une valeur (ex: 123, texte, =GAUCHE(A2;3))" />
+      <button class="btn" id="applyBtn">Appliquer</button>
+      <button class="btn secondary" id="toggleExercise">Exercice</button>
+      <span class="status" id="status"></span>
+    </div>
+
+    <div class="gridWrap">
+      <div class="sheetTabs" id="tabs"></div>
+      <div class="work" id="work">
+        <div class="grid" id="grid">
+          <div class="corner"></div>
+          <div class="colHeader" id="colHeader"></div>
+          <div class="rowHeader" id="rowHeader"></div>
+          <div class="cells" id="cells"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hint" id="hint"></div>
+  </div>
+
+<script>
+(() => {
+  const ROWS = 30, COLS = 14;
+  const sheets = [
+    { name: "Feuil1", data: new Map() },
+    { name: "Exercices", data: new Map() },
+    { name: "Résultats", data: new Map() },
+  ];
+  let activeSheet = 0;
+  let selected = { r:1, c:1 }; // 1-indexed
+  let exerciseMode = false;
+
+  const el = (id) => document.getElementById(id);
+  const gridEl = el("grid");
+  const colHeaderEl = el("colHeader");
+  const rowHeaderEl = el("rowHeader");
+  const cellsEl = el("cells");
+  const tabsEl = el("tabs");
+  const nameBox = el("nameBox");
+  const fxInput = el("fxInput");
+  const status = el("status");
+  const hint = el("hint");
+  const modePill = el("modePill");
+
+  gridEl.style.setProperty("--rows", ROWS);
+  gridEl.style.setProperty("--cols", COLS);
+
+  const colName = (n) => {
+    let s = "";
+    while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+    return s;
+  };
+  const addr = (r,c) => `${colName(c)}${r}`;
+  const key = (r,c) => `${r},${c}`;
+
+  function setStatus(text, type="") {
+    status.textContent = text || "";
+    status.className = "status" + (type ? " " + type : "");
+  }
+
+  function renderHeaders(){
+    colHeaderEl.innerHTML = "";
+    for(let c=1;c<=COLS;c++){
+      const d=document.createElement("div");
+      d.className="h";
+      d.textContent=colName(c);
+      colHeaderEl.appendChild(d);
+    }
+    rowHeaderEl.innerHTML="";
+    for(let r=1;r<=ROWS;r++){
+      const d=document.createElement("div");
+      d.className="r";
+      d.textContent=r;
+      rowHeaderEl.appendChild(d);
+    }
+  }
+
+  function renderTabs(){
+    tabsEl.innerHTML="";
+    sheets.forEach((s, i) => {
+      const t=document.createElement("div");
+      t.className="tab" + (i===activeSheet ? " active":"");
+      t.textContent=s.name;
+      t.addEventListener("click", () => { activeSheet=i; renderAll(); });
+      tabsEl.appendChild(t);
+    });
+  }
+
+  function getCellValue(r,c){
+    return sheets[activeSheet].data.get(key(r,c)) ?? "";
+  }
+  function setCellValue(r,c,v){
+    if(v=== "" || v==null) sheets[activeSheet].data.delete(key(r,c));
+    else sheets[activeSheet].data.set(key(r,c), v);
+  }
+
+  function renderCells(){
+    cellsEl.innerHTML="";
+    for(let r=1;r<=ROWS;r++){
+      for(let c=1;c<=COLS;c++){
+        const d=document.createElement("div");
+        d.className="cell";
+        d.textContent=getCellValue(r,c);
+        d.dataset.r=r; d.dataset.c=c;
+        d.addEventListener("click", () => select(r,c));
+        d.addEventListener("dblclick", () => beginEdit(r,c));
+        cellsEl.appendChild(d);
+      }
+    }
+  }
+
+  function updateSelectionUI(){
+    const nodes = cellsEl.querySelectorAll(".cell");
+    nodes.forEach(n => n.dataset.selected="0");
+    const idx = (selected.r-1)*COLS + (selected.c-1);
+    const node = nodes[idx];
+    if(node){ node.dataset.selected="1"; }
+    nameBox.textContent = addr(selected.r, selected.c);
+    fxInput.value = getCellValue(selected.r, selected.c);
+  }
+
+  function select(r,c){
+    selected={r,c};
+    setStatus("");
+    updateSelectionUI();
+    updateHint();
+  }
+
+  function beginEdit(r,c){
+    select(r,c);
+    fxInput.focus();
+    fxInput.select();
+  }
+
+  // Simple "exercise" definitions (you can customize)
+  const exerciseSteps = [
+    { sheet: "Exercices", target: {r:2,c:2}, expect: "=GAUCHE(A2;3)", msg: "Dans B2, saisis =GAUCHE(A2;3)" },
+    { sheet: "Exercices", target: {r:3,c:2}, expect: "=DROITE(A3;2)", msg: "Dans B3, saisis =DROITE(A3;2)" },
+    { sheet: "Exercices", target: {r:4,c:2}, expect: "=STXT(A4;2;4)", msg: "Dans B4, saisis =STXT(A4;2;4)" }
+  ];
+  let stepIndex = 0;
+
+  function updateHint(){
+    if(!exerciseMode){ hint.textContent = "Astuce : tu peux créer des écrans/exercices en verrouillant des zones attendues et en donnant du feedback ✅/❌."; return; }
+    const step = exerciseSteps[stepIndex];
+    hint.textContent = `🎯 Exercice ${stepIndex+1}/${exerciseSteps.length} — ${step.msg}`;
+  }
+
+  function applyValue(){
+    const v = fxInput.value ?? "";
+    setCellValue(selected.r, selected.c, v);
+    // update visible cell text
+    const idx = (selected.r-1)*COLS + (selected.c-1);
+    const node = cellsEl.querySelectorAll(".cell")[idx];
+    if(node) node.textContent = v;
+
+    if(exerciseMode) checkExercise(v);
+    else setStatus("Enregistré", "ok");
+  }
+
+  function checkExercise(v){
+    const step = exerciseSteps[stepIndex];
+    // force correct sheet / cell
+    if(sheets[activeSheet].name !== step.sheet){
+      setStatus(`Va sur l'onglet "${step.sheet}"`, "bad");
+      return;
+    }
+    if(selected.r !== step.target.r || selected.c !== step.target.c){
+      setStatus(`Clique ${addr(step.target.r, step.target.c)} d'abord`, "bad");
+      return;
+    }
+    if(v.trim().toUpperCase() === step.expect.trim().toUpperCase()){
+      setStatus("✅ Correct !", "ok");
+      stepIndex = Math.min(stepIndex + 1, exerciseSteps.length - 1);
+      updateHint();
+    } else {
+      setStatus("❌ Pas encore. Vérifie la formule.", "bad");
+    }
+  }
+
+  function toggleExerciseMode(){
+    exerciseMode = !exerciseMode;
+    modePill.textContent = "Mode : " + (exerciseMode ? "Exercice" : "Libre");
+    modePill.style.background = exerciseMode ? "rgba(33,197,93,.12)" : "rgba(58,160,255,.12)";
+    modePill.style.borderColor = exerciseMode ? "rgba(33,197,93,.25)" : "rgba(58,160,255,.25)";
+    stepIndex = 0;
+    // prefill sample data on "Exercices"
+    const exIdx = sheets.findIndex(s => s.name==="Exercices");
+    if(exIdx>=0){
+      sheets[exIdx].data.set(key(2,1),"DUPONT");
+      sheets[exIdx].data.set(key(3,1),"KURACOOL");
+      sheets[exIdx].data.set(key(4,1),"REUNION");
+    }
+    renderAll();
+  }
+
+  function renderAll(){
+    renderTabs();
+    renderHeaders();
+    renderCells();
+    // keep selection within bounds
+    selected.r = Math.max(1, Math.min(ROWS, selected.r));
+    selected.c = Math.max(1, Math.min(COLS, selected.c));
+    updateSelectionUI();
+    updateHint();
+    setStatus("");
+  }
+
+  el("applyBtn").addEventListener("click", applyValue);
+  fxInput.addEventListener("keydown", (e) => {
+    if(e.key==="Enter"){ applyValue(); }
+    if(e.key==="Escape"){ fxInput.value=getCellValue(selected.r, selected.c); setStatus("Annulé"); }
+  });
+  el("toggleExercise").addEventListener("click", toggleExerciseMode);
+
+  // basic keyboard navigation
+  window.addEventListener("keydown", (e) => {
+    if(document.activeElement === fxInput) return;
+    const {r,c} = selected;
+    if(e.key==="ArrowUp") { e.preventDefault(); select(Math.max(1,r-1), c); }
+    if(e.key==="ArrowDown") { e.preventDefault(); select(Math.min(ROWS,r+1), c); }
+    if(e.key==="ArrowLeft") { e.preventDefault(); select(r, Math.max(1,c-1)); }
+    if(e.key==="ArrowRight") { e.preventDefault(); select(r, Math.min(COLS,c+1)); }
+    if(e.key==="Enter") { e.preventDefault(); beginEdit(r,c); }
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
