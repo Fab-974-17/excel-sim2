@@ -3,158 +3,353 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Excel-like Simulator</title>
+  <title>Excel-like Simulator (1200x675)</title>
   <style>
+    /* ====== CANVAS FIXE GENIALLY ====== */
     :root{
-      --bg:#0b1220;
-      --panel:#0f1a2e;
-      --grid:#1a2a46;
-      --text:#e9eefc;
-      --muted:#9fb0d0;
-      --accent:#3aa0ff;
-      --ok:#21c55d;
-      --bad:#ef4444;
-      --cellW:120px;
-      --cellH:34px;
-      --rowHeaderW:58px;
-      --colHeaderH:34px;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      --W:1200;
+      --H:675;
+
+      /* Excel-like */
+      --ui:#f3f4f6;
+      --ui2:#e5e7eb;
+      --line:#d1d5db;
+      --text:#111827;
+      --muted:#6b7280;
+      --accent:#1d4ed8;
+
+      --cellW:110px;
+      --cellH:28px;
+      --rowHeaderW:52px;
+      --colHeaderH:26px;
+
+      --font: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
     }
-    body{margin:0;background:linear-gradient(180deg,var(--bg),#060b14);color:var(--text);}
-    .app{max-width:1200px;margin:18px auto;padding:14px;}
-    .bar{display:flex;gap:10px;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.08); border-radius:16px;padding:12px 14px;backdrop-filter: blur(8px);}
-    .title{font-weight:700}
-    .sub{color:var(--muted);font-size:13px}
-    .pill{padding:6px 10px;border-radius:999px;background:rgba(58,160,255,.12);border:1px solid rgba(58,160,255,.25);color:#cfe8ff;font-size:12px}
-    .gridWrap{margin-top:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
-      border-radius:18px;overflow:hidden;}
-    .sheetTabs{display:flex;gap:6px;padding:10px;background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,255,255,.08)}
-    .tab{cursor:pointer;color:var(--muted);padding:8px 12px;border-radius:12px;border:1px solid transparent}
-    .tab.active{color:var(--text);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.10)}
-    .work{position:relative;height:520px;overflow:auto;}
+
+    html,body{height:100%;margin:0;background:#0000;font-family:var(--font);}
+
+    /* Conteneur parent : centre et scale auto */
+    .stage{
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:transparent;
+      overflow:hidden;
+    }
+
+    /* Canvas fixe 1200x675 */
+    .canvas{
+      width:calc(var(--W) * 1px);
+      height:calc(var(--H) * 1px);
+      background:white;
+      box-shadow:0 18px 50px rgba(0,0,0,.18);
+      border-radius:14px;
+      overflow:hidden;
+      transform-origin:center center;
+    }
+
+    /* ====== TOP BAR (pseudo-ruban) ====== */
+    .topbar{
+      height:54px;
+      background:linear-gradient(180deg, var(--ui), #ffffff);
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:8px 12px;
+    }
+    .badge{
+      display:flex;align-items:center;gap:8px;
+      padding:8px 10px;border-radius:10px;
+      background:#ffffff;border:1px solid var(--ui2);
+      font-weight:700;color:var(--text);
+    }
+    .badge .dot{
+      width:10px;height:10px;border-radius:999px;background:var(--accent);
+      box-shadow:0 0 0 3px rgba(29,78,216,.15);
+    }
+    .tabsRibbon{display:flex;gap:12px;color:var(--muted);font-weight:600;font-size:13px}
+    .tabsRibbon .active{color:var(--text);position:relative}
+    .tabsRibbon .active:after{
+      content:"";position:absolute;left:0;right:0;bottom:-10px;height:3px;border-radius:99px;background:var(--accent);
+    }
+    .spacer{flex:1}
+    .btn{
+      border:1px solid var(--ui2);
+      background:#fff;
+      border-radius:10px;
+      padding:8px 10px;
+      font-weight:700;
+      font-size:13px;
+      cursor:pointer;
+      color:var(--text);
+    }
+    .btn.primary{border-color:rgba(29,78,216,.35); background:rgba(29,78,216,.08); color:#0b2a7a}
+
+    /* ====== FORMULA BAR ====== */
+    .fxbar{
+      height:46px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 12px;
+      border-bottom:1px solid var(--line);
+      background:#fff;
+    }
+    .nameBox{
+      width:92px;
+      height:34px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;
+      color:#0b2a7a;
+      background:#f8fafc;
+      user-select:none;
+    }
+    .fx{
+      width:30px;height:34px;border-radius:10px;
+      display:flex;align-items:center;justify-content:center;
+      border:1px solid var(--line);
+      background:#f8fafc;
+      color:var(--muted);
+      font-weight:900;
+      user-select:none;
+    }
+    .fxInput{
+      flex:1;
+      height:34px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:0 10px;
+      outline:none;
+      font-size:13px;
+      color:var(--text);
+      background:#fff;
+    }
+    .status{
+      min-width:210px;
+      font-size:13px;
+      color:var(--muted);
+      text-align:right;
+      user-select:none;
+    }
+    .status.ok{color:#16a34a;font-weight:700}
+    .status.bad{color:#dc2626;font-weight:700}
+
+    /* ====== GRID AREA ====== */
+    .sheetWrap{
+      height:calc(var(--H) * 1px - 54px - 46px - 44px); /* canvas - topbar - fxbar - bottom tabs */
+      background:#fff;
+      position:relative;
+    }
+
+    /* Scroll zone interne (mais pas forcément besoin si scale) */
+    .work{
+      position:absolute;inset:0;
+      overflow:auto;
+      background:#fff;
+    }
+
     .grid{
       position:relative;
       width: calc(var(--rowHeaderW) + var(--cols) * var(--cellW));
       height: calc(var(--colHeaderH) + var(--rows) * var(--cellH));
     }
+
     .corner{
       position:sticky;top:0;left:0;z-index:5;
-      width:var(--rowHeaderW);height:var(--colHeaderH);
-      background:rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.10);border-bottom:1px solid rgba(255,255,255,.10);
+      width:var(--rowHeaderW);
+      height:var(--colHeaderH);
+      background:var(--ui);
+      border-right:1px solid var(--line);
+      border-bottom:1px solid var(--line);
     }
+
     .colHeader{
-      position:sticky;top:0;z-index:4;
-      display:flex;left:var(--rowHeaderW);height:var(--colHeaderH);
-      background:rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.10);
+      position:sticky;top:0;left:var(--rowHeaderW);z-index:4;
+      display:flex;
+      height:var(--colHeaderH);
+      background:var(--ui);
+      border-bottom:1px solid var(--line);
     }
     .colHeader .h{
-      width:var(--cellW);height:var(--colHeaderH);display:flex;align-items:center;justify-content:center;
-      border-right:1px solid rgba(255,255,255,.08);color:#dbe7ff;font-size:13px;font-weight:600;
+      width:var(--cellW);
+      height:var(--colHeaderH);
+      display:flex;align-items:center;justify-content:center;
+      border-right:1px solid var(--line);
+      font-size:12px;
+      font-weight:800;
+      color:#374151;
+      user-select:none;
     }
+
     .rowHeader{
-      position:sticky;left:0;z-index:3;
-      top:var(--colHeaderH);width:var(--rowHeaderW);
-      background:rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.10);
+      position:sticky;left:0;top:var(--colHeaderH);z-index:3;
+      width:var(--rowHeaderW);
+      background:var(--ui);
+      border-right:1px solid var(--line);
     }
     .rowHeader .r{
-      height:var(--cellH);display:flex;align-items:center;justify-content:center;
-      border-bottom:1px solid rgba(255,255,255,.08);color:#dbe7ff;font-size:13px;font-weight:600;
+      height:var(--cellH);
+      display:flex;align-items:center;justify-content:center;
+      border-bottom:1px solid var(--line);
+      font-size:12px;
+      font-weight:800;
+      color:#374151;
+      user-select:none;
     }
+
     .cells{
-      position:absolute;left:var(--rowHeaderW);top:var(--colHeaderH);
+      position:absolute;
+      left:var(--rowHeaderW);
+      top:var(--colHeaderH);
       display:grid;
       grid-template-columns: repeat(var(--cols), var(--cellW));
       grid-auto-rows: var(--cellH);
-      border-top:1px solid rgba(255,255,255,.08);
-      border-left:1px solid rgba(255,255,255,.08);
+      border-top:1px solid var(--line);
+      border-left:1px solid var(--line);
+      background:#fff;
     }
+
     .cell{
       box-sizing:border-box;
-      border-right:1px solid rgba(255,255,255,.08);
-      border-bottom:1px solid rgba(255,255,255,.08);
-      padding:6px 8px;
+      border-right:1px solid var(--line);
+      border-bottom:1px solid var(--line);
+      padding:5px 8px;
       font-size:13px;
       color:var(--text);
-      background:rgba(0,0,0,.05);
-      outline:none;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
       user-select:none;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      cursor:cell;
     }
-    .cell[data-selected="1"]{
-      box-shadow: inset 0 0 0 2px var(--accent);
-      background:rgba(58,160,255,.10);
+
+    .cell.selected{
+      outline:2px solid var(--accent);
+      outline-offset:-2px;
+      background:rgba(29,78,216,.06);
     }
-    .fx{
-      margin-top:10px;display:flex;gap:10px;align-items:center;
-      background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;padding:10px 12px;
+
+    /* Input d’édition posé AU-DESSUS de la cellule */
+    .editBox{
+      position:absolute;
+      z-index:10;
+      display:none;
     }
-    .nameBox{width:82px;text-align:center;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.18);
-      border:1px solid rgba(255,255,255,.10);color:#cfe8ff;font-weight:700}
-    .fxLabel{color:var(--muted);font-weight:700}
-    .fxInput{
-      flex:1;padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.18);
-      border:1px solid rgba(255,255,255,.10);color:var(--text);outline:none;
+    .editInput{
+      width:100%;
+      height:100%;
+      border:2px solid var(--accent);
+      border-radius:0;
+      box-sizing:border-box;
+      padding:4px 7px;
+      font-size:13px;
+      outline:none;
+      background:#fff;
+      color:var(--text);
     }
-    .btn{
-      cursor:pointer;border:none;padding:9px 12px;border-radius:12px;
-      background:rgba(58,160,255,.18);border:1px solid rgba(58,160,255,.30);color:#d8efff;font-weight:700;
+
+    /* ====== BOTTOM SHEET TABS ====== */
+    .bottomTabs{
+      height:44px;
+      background:var(--ui);
+      border-top:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:0 10px;
     }
-    .btn.secondary{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.10);color:var(--text)}
-    .status{margin-left:auto;color:var(--muted);font-size:13px}
-    .status.ok{color:var(--ok)} .status.bad{color:var(--bad)}
-    .hint{margin-top:10px;color:var(--muted);font-size:13px}
+    .sheetTab{
+      cursor:pointer;
+      padding:9px 12px;
+      border-radius:10px;
+      border:1px solid transparent;
+      font-weight:800;
+      font-size:13px;
+      color:#374151;
+      user-select:none;
+    }
+    .sheetTab.active{
+      background:#fff;
+      border-color:var(--ui2);
+      color:#0b2a7a;
+      box-shadow:0 6px 18px rgba(0,0,0,.08);
+    }
   </style>
 </head>
 <body>
-  <div class="app">
-    <div class="bar">
-      <div>
-        <div class="title">Simulateur Excel (e-learning)</div>
-        <div class="sub">Clique une cellule, double-clique pour éditer. Onglets en bas. Mode exercice simple.</div>
+  <div class="stage" id="stage">
+    <div class="canvas" id="canvas">
+      <div class="topbar">
+        <div class="badge"><span class="dot"></span>Excel — Simulation</div>
+        <div class="tabsRibbon">
+          <div class="active">Accueil</div>
+          <div>Insertion</div>
+          <div>Formules</div>
+          <div>Données</div>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn" id="clearBtn">Réinitialiser</button>
+        <button class="btn primary" id="exerciseBtn">Mode exercice</button>
       </div>
-      <div class="pill" id="modePill">Mode : Libre</div>
-    </div>
 
-    <div class="fx">
-      <div class="nameBox" id="nameBox">A1</div>
-      <div class="fxLabel">fx</div>
-      <input class="fxInput" id="fxInput" placeholder="Saisis une valeur (ex: 123, texte, =GAUCHE(A2;3))" />
-      <button class="btn" id="applyBtn">Appliquer</button>
-      <button class="btn secondary" id="toggleExercise">Exercice</button>
-      <span class="status" id="status"></span>
-    </div>
+      <div class="fxbar">
+        <div class="nameBox" id="nameBox">A1</div>
+        <div class="fx">fx</div>
+        <input class="fxInput" id="fxInput" placeholder="Barre de formule (tape ici ou directement dans une cellule)" />
+        <div class="status" id="status">Clique une cellule puis tape.</div>
+      </div>
 
-    <div class="gridWrap">
-      <div class="sheetTabs" id="tabs"></div>
-      <div class="work" id="work">
-        <div class="grid" id="grid">
-          <div class="corner"></div>
-          <div class="colHeader" id="colHeader"></div>
-          <div class="rowHeader" id="rowHeader"></div>
-          <div class="cells" id="cells"></div>
+      <div class="sheetWrap">
+        <div class="work" id="work">
+          <div class="grid" id="grid">
+            <div class="corner"></div>
+            <div class="colHeader" id="colHeader"></div>
+            <div class="rowHeader" id="rowHeader"></div>
+            <div class="cells" id="cells"></div>
+
+            <!-- overlay input -->
+            <div class="editBox" id="editBox">
+              <input class="editInput" id="editInput" />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="hint" id="hint"></div>
+      <div class="bottomTabs" id="tabs"></div>
+    </div>
   </div>
 
 <script>
 (() => {
-  const ROWS = 30, COLS = 14;
+  /* ====== CONFIG ====== */
+  const ROWS = 24;
+  const COLS = 14;
+
   const sheets = [
     { name: "Feuil1", data: new Map() },
     { name: "Exercices", data: new Map() },
     { name: "Résultats", data: new Map() },
   ];
-  let activeSheet = 0;
-  let selected = { r:1, c:1 }; // 1-indexed
-  let exerciseMode = false;
 
+  // Dimensions CSS (doivent matcher :root)
+  const cellW = 110, cellH = 28, rowHeaderW = 52, colHeaderH = 26;
+
+  let activeSheet = 0;
+  let selected = { r: 1, c: 1 };
+  let exerciseMode = false;
+  let stepIndex = 0;
+
+  /* ====== DOM ====== */
   const el = (id) => document.getElementById(id);
+  const canvas = el("canvas");
+  const stage  = el("stage");
   const gridEl = el("grid");
+  const workEl = el("work");
   const colHeaderEl = el("colHeader");
   const rowHeaderEl = el("rowHeader");
   const cellsEl = el("cells");
@@ -162,25 +357,40 @@
   const nameBox = el("nameBox");
   const fxInput = el("fxInput");
   const status = el("status");
-  const hint = el("hint");
-  const modePill = el("modePill");
+  const editBox = el("editBox");
+  const editInput = el("editInput");
 
   gridEl.style.setProperty("--rows", ROWS);
   gridEl.style.setProperty("--cols", COLS);
 
+  /* ====== UTILS ====== */
   const colName = (n) => {
     let s = "";
-    while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+    while (n > 0) {
+      const m = (n - 1) % 26;
+      s = String.fromCharCode(65 + m) + s;
+      n = Math.floor((n - 1) / 26);
+    }
     return s;
   };
-  const addr = (r,c) => `${colName(c)}${r}`;
-  const key = (r,c) => `${r},${c}`;
+  const addr = (r, c) => `${colName(c)}${r}`;
+  const key  = (r, c) => `${r},${c}`;
 
-  function setStatus(text, type="") {
+  function getCellValue(r,c){
+    return sheets[activeSheet].data.get(key(r,c)) ?? "";
+  }
+  function setCellValue(r,c,v){
+    const val = (v ?? "");
+    if(val === "") sheets[activeSheet].data.delete(key(r,c));
+    else sheets[activeSheet].data.set(key(r,c), val);
+  }
+
+  function setStatus(text, type=""){
     status.textContent = text || "";
     status.className = "status" + (type ? " " + type : "");
   }
 
+  /* ====== RENDER ====== */
   function renderHeaders(){
     colHeaderEl.innerHTML = "";
     for(let c=1;c<=COLS;c++){
@@ -189,7 +399,7 @@
       d.textContent=colName(c);
       colHeaderEl.appendChild(d);
     }
-    rowHeaderEl.innerHTML="";
+    rowHeaderEl.innerHTML = "";
     for(let r=1;r<=ROWS;r++){
       const d=document.createElement("div");
       d.className="r";
@@ -199,33 +409,29 @@
   }
 
   function renderTabs(){
-    tabsEl.innerHTML="";
+    tabsEl.innerHTML = "";
     sheets.forEach((s, i) => {
-      const t=document.createElement("div");
-      t.className="tab" + (i===activeSheet ? " active":"");
-      t.textContent=s.name;
-      t.addEventListener("click", () => { activeSheet=i; renderAll(); });
+      const t = document.createElement("div");
+      t.className = "sheetTab" + (i===activeSheet ? " active" : "");
+      t.textContent = s.name;
+      t.onclick = () => { activeSheet=i; hideEditor(true); renderAll(); };
       tabsEl.appendChild(t);
     });
   }
 
-  function getCellValue(r,c){
-    return sheets[activeSheet].data.get(key(r,c)) ?? "";
-  }
-  function setCellValue(r,c,v){
-    if(v=== "" || v==null) sheets[activeSheet].data.delete(key(r,c));
-    else sheets[activeSheet].data.set(key(r,c), v);
-  }
-
   function renderCells(){
-    cellsEl.innerHTML="";
+    cellsEl.innerHTML = "";
     for(let r=1;r<=ROWS;r++){
       for(let c=1;c<=COLS;c++){
-        const d=document.createElement("div");
-        d.className="cell";
-        d.textContent=getCellValue(r,c);
-        d.dataset.r=r; d.dataset.c=c;
-        d.addEventListener("click", () => select(r,c));
+        const d = document.createElement("div");
+        d.className = "cell";
+        d.textContent = getCellValue(r,c);
+        d.dataset.r = r;
+        d.dataset.c = c;
+        d.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          select(r,c);
+        });
         d.addEventListener("dblclick", () => beginEdit(r,c));
         cellsEl.appendChild(d);
       }
@@ -234,56 +440,182 @@
 
   function updateSelectionUI(){
     const nodes = cellsEl.querySelectorAll(".cell");
-    nodes.forEach(n => n.dataset.selected="0");
+    nodes.forEach(n => n.classList.remove("selected"));
     const idx = (selected.r-1)*COLS + (selected.c-1);
     const node = nodes[idx];
-    if(node){ node.dataset.selected="1"; }
+    if(node) node.classList.add("selected");
+
     nameBox.textContent = addr(selected.r, selected.c);
     fxInput.value = getCellValue(selected.r, selected.c);
   }
 
-  function select(r,c){
-    selected={r,c};
-    setStatus("");
+  function renderAll(){
+    renderTabs();
+    renderHeaders();
+    renderCells();
     updateSelectionUI();
-    updateHint();
+    ensureSelectionVisible();
+    updateExerciseHint();
   }
 
-  function beginEdit(r,c){
-    select(r,c);
-    fxInput.focus();
-    fxInput.select();
+  /* ====== SELECTION + VISIBILITY ====== */
+  function select(r,c){
+    hideEditor(true);
+    selected = { r, c };
+    updateSelectionUI();
+    setStatus("Tape pour saisir. Entrée valide, Échap annule.", "");
   }
 
-  // Simple "exercise" definitions (you can customize)
+  function ensureSelectionVisible(){
+    // Scroll grid so selected is visible
+    const x = rowHeaderW + (selected.c-1)*cellW;
+    const y = colHeaderH + (selected.r-1)*cellH;
+    const pad = 16;
+
+    const viewL = workEl.scrollLeft;
+    const viewT = workEl.scrollTop;
+    const viewR = viewL + workEl.clientWidth;
+    const viewB = viewT + workEl.clientHeight;
+
+    const cellR = x + cellW;
+    const cellB = y + cellH;
+
+    if(x - pad < viewL) workEl.scrollLeft = Math.max(0, x - pad);
+    else if(cellR + pad > viewR) workEl.scrollLeft = cellR + pad - workEl.clientWidth;
+
+    if(y - pad < viewT) workEl.scrollTop = Math.max(0, y - pad);
+    else if(cellB + pad > viewB) workEl.scrollTop = cellB + pad - workEl.clientHeight;
+  }
+
+  /* ====== EDITION DIRECTE DANS CELLULE ====== */
+  function beginEdit(r=selected.r, c=selected.c){
+    selected = { r, c };
+    updateSelectionUI();
+    positionEditor();
+    editInput.value = getCellValue(r,c);
+    editBox.style.display = "block";
+    editInput.focus();
+    editInput.select();
+  }
+
+  function positionEditor(){
+    // Position relative to grid
+    const left = rowHeaderW + (selected.c-1)*cellW;
+    const top  = colHeaderH + (selected.r-1)*cellH;
+
+    editBox.style.left = left + "px";
+    editBox.style.top  = top  + "px";
+    editBox.style.width  = cellW + "px";
+    editBox.style.height = cellH + "px";
+  }
+
+  function hideEditor(commit){
+    if(editBox.style.display !== "block") return;
+    if(commit){
+      const v = editInput.value ?? "";
+      setCellValue(selected.r, selected.c, v);
+      // update cell text
+      const idx = (selected.r-1)*COLS + (selected.c-1);
+      const node = cellsEl.querySelectorAll(".cell")[idx];
+      if(node) node.textContent = v;
+      fxInput.value = v;
+      if(exerciseMode) checkExercise(v);
+      else setStatus("Enregistré ✅", "ok");
+    } else {
+      setStatus("Annulé", "");
+    }
+    editBox.style.display = "none";
+  }
+
+  // Typing should start editing immediately (like Excel)
+  window.addEventListener("keydown", (e) => {
+    // If focus is in an input, ignore global handlers except special keys
+    const inInput = document.activeElement === fxInput || document.activeElement === editInput;
+    if(inInput) return;
+
+    if(e.key === "Enter"){ e.preventDefault(); beginEdit(); return; }
+
+    if(e.key.startsWith("Arrow")){
+      e.preventDefault();
+      const {r,c} = selected;
+      if(e.key==="ArrowUp")    select(Math.max(1,r-1), c);
+      if(e.key==="ArrowDown")  select(Math.min(ROWS,r+1), c);
+      if(e.key==="ArrowLeft")  select(r, Math.max(1,c-1));
+      if(e.key==="ArrowRight") select(r, Math.min(COLS,c+1));
+      return;
+    }
+
+    // If user presses a printable character, start editing and put char
+    if(e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey){
+      beginEdit();
+      editInput.value = e.key;
+      // place caret at end
+      requestAnimationFrame(() => {
+        editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+      });
+    }
+  });
+
+  // Edit input keys
+  editInput.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){ e.preventDefault(); hideEditor(true); }
+    if(e.key === "Escape"){ e.preventDefault(); hideEditor(false); }
+  });
+
+  // Click outside commits
+  document.addEventListener("mousedown", (e) => {
+    if(editBox.style.display !== "block") return;
+    const within = editBox.contains(e.target);
+    if(!within){
+      hideEditor(true);
+    }
+  });
+
+  // Formula bar edits current cell
+  fxInput.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){
+      e.preventDefault();
+      setCellValue(selected.r, selected.c, fxInput.value ?? "");
+      const idx = (selected.r-1)*COLS + (selected.c-1);
+      const node = cellsEl.querySelectorAll(".cell")[idx];
+      if(node) node.textContent = fxInput.value ?? "";
+      if(exerciseMode) checkExercise(fxInput.value ?? "");
+      else setStatus("Enregistré ✅", "ok");
+      fxInput.blur();
+    }
+    if(e.key === "Escape"){
+      e.preventDefault();
+      fxInput.value = getCellValue(selected.r, selected.c);
+      setStatus("Annulé", "");
+      fxInput.blur();
+    }
+  });
+
+  fxInput.addEventListener("focus", () => hideEditor(true));
+
+  // Reposition editor on scroll (if open)
+  workEl.addEventListener("scroll", () => {
+    if(editBox.style.display === "block") positionEditor();
+  });
+
+  /* ====== EXERCISE MODE (optionnel) ====== */
   const exerciseSteps = [
-    { sheet: "Exercices", target: {r:2,c:2}, expect: "=GAUCHE(A2;3)", msg: "Dans B2, saisis =GAUCHE(A2;3)" },
-    { sheet: "Exercices", target: {r:3,c:2}, expect: "=DROITE(A3;2)", msg: "Dans B3, saisis =DROITE(A3;2)" },
-    { sheet: "Exercices", target: {r:4,c:2}, expect: "=STXT(A4;2;4)", msg: "Dans B4, saisis =STXT(A4;2;4)" }
+    { sheet: "Exercices", target:{r:2,c:2}, expect:"=GAUCHE(A2;3)", msg:"Dans B2, saisis =GAUCHE(A2;3)" },
+    { sheet: "Exercices", target:{r:3,c:2}, expect:"=DROITE(A3;2)",  msg:"Dans B3, saisis =DROITE(A3;2)" },
+    { sheet: "Exercices", target:{r:4,c:2}, expect:"=STXT(A4;2;4)",  msg:"Dans B4, saisis =STXT(A4;2;4)" },
   ];
-  let stepIndex = 0;
 
-  function updateHint(){
-    if(!exerciseMode){ hint.textContent = "Astuce : tu peux créer des écrans/exercices en verrouillant des zones attendues et en donnant du feedback ✅/❌."; return; }
+  function updateExerciseHint(){
+    if(!exerciseMode){
+      setStatus("Clique une cellule puis tape.", "");
+      return;
+    }
     const step = exerciseSteps[stepIndex];
-    hint.textContent = `🎯 Exercice ${stepIndex+1}/${exerciseSteps.length} — ${step.msg}`;
-  }
-
-  function applyValue(){
-    const v = fxInput.value ?? "";
-    setCellValue(selected.r, selected.c, v);
-    // update visible cell text
-    const idx = (selected.r-1)*COLS + (selected.c-1);
-    const node = cellsEl.querySelectorAll(".cell")[idx];
-    if(node) node.textContent = v;
-
-    if(exerciseMode) checkExercise(v);
-    else setStatus("Enregistré", "ok");
+    setStatus(`🎯 Exercice ${stepIndex+1}/${exerciseSteps.length} — ${step.msg}`, "");
   }
 
   function checkExercise(v){
     const step = exerciseSteps[stepIndex];
-    // force correct sheet / cell
     if(sheets[activeSheet].name !== step.sheet){
       setStatus(`Va sur l'onglet "${step.sheet}"`, "bad");
       return;
@@ -292,62 +624,67 @@
       setStatus(`Clique ${addr(step.target.r, step.target.c)} d'abord`, "bad");
       return;
     }
-    if(v.trim().toUpperCase() === step.expect.trim().toUpperCase()){
+    if((v||"").trim().toUpperCase() === step.expect.trim().toUpperCase()){
       setStatus("✅ Correct !", "ok");
-      stepIndex = Math.min(stepIndex + 1, exerciseSteps.length - 1);
-      updateHint();
+      if(stepIndex < exerciseSteps.length-1) stepIndex++;
+      updateExerciseHint();
     } else {
       setStatus("❌ Pas encore. Vérifie la formule.", "bad");
     }
   }
 
-  function toggleExerciseMode(){
+  function toggleExercise(){
     exerciseMode = !exerciseMode;
-    modePill.textContent = "Mode : " + (exerciseMode ? "Exercice" : "Libre");
-    modePill.style.background = exerciseMode ? "rgba(33,197,93,.12)" : "rgba(58,160,255,.12)";
-    modePill.style.borderColor = exerciseMode ? "rgba(33,197,93,.25)" : "rgba(58,160,255,.25)";
     stepIndex = 0;
-    // prefill sample data on "Exercices"
-    const exIdx = sheets.findIndex(s => s.name==="Exercices");
-    if(exIdx>=0){
-      sheets[exIdx].data.set(key(2,1),"DUPONT");
-      sheets[exIdx].data.set(key(3,1),"KURACOOL");
-      sheets[exIdx].data.set(key(4,1),"REUNION");
+
+    // Prefill sample data in "Exercices"
+    const exIdx = sheets.findIndex(s => s.name === "Exercices");
+    if(exIdx >= 0){
+      sheets[exIdx].data.set(key(2,1), "DUPONT");
+      sheets[exIdx].data.set(key(3,1), "KURACOOL");
+      sheets[exIdx].data.set(key(4,1), "REUNION");
     }
+
+    setStatus(exerciseMode ? "Mode exercice activé" : "Mode libre", exerciseMode ? "ok" : "");
     renderAll();
+
+    // Auto-switch to "Exercices" when enabling
+    if(exerciseMode && exIdx >= 0){
+      activeSheet = exIdx;
+      selected = { r:2, c:2 };
+      renderAll();
+    }
   }
 
-  function renderAll(){
-    renderTabs();
-    renderHeaders();
-    renderCells();
-    // keep selection within bounds
-    selected.r = Math.max(1, Math.min(ROWS, selected.r));
-    selected.c = Math.max(1, Math.min(COLS, selected.c));
-    updateSelectionUI();
-    updateHint();
-    setStatus("");
+  /* ====== RESET ====== */
+  function resetAll(){
+    sheets.forEach(s => s.data.clear());
+    activeSheet = 0;
+    selected = { r:1, c:1 };
+    exerciseMode = false;
+    stepIndex = 0;
+    hideEditor(false);
+    renderAll();
+    setStatus("Réinitialisé.", "");
   }
 
-  el("applyBtn").addEventListener("click", applyValue);
-  fxInput.addEventListener("keydown", (e) => {
-    if(e.key==="Enter"){ applyValue(); }
-    if(e.key==="Escape"){ fxInput.value=getCellValue(selected.r, selected.c); setStatus("Annulé"); }
-  });
-  el("toggleExercise").addEventListener("click", toggleExerciseMode);
+  el("exerciseBtn").addEventListener("click", toggleExercise);
+  el("clearBtn").addEventListener("click", resetAll);
 
-  // basic keyboard navigation
-  window.addEventListener("keydown", (e) => {
-    if(document.activeElement === fxInput) return;
-    const {r,c} = selected;
-    if(e.key==="ArrowUp") { e.preventDefault(); select(Math.max(1,r-1), c); }
-    if(e.key==="ArrowDown") { e.preventDefault(); select(Math.min(ROWS,r+1), c); }
-    if(e.key==="ArrowLeft") { e.preventDefault(); select(r, Math.max(1,c-1)); }
-    if(e.key==="ArrowRight") { e.preventDefault(); select(r, Math.min(COLS,c+1)); }
-    if(e.key==="Enter") { e.preventDefault(); beginEdit(r,c); }
-  });
+  /* ====== AUTO SCALE TO FIT IFRAME ====== */
+  function scaleToFit(){
+    // stage = viewport iframe, canvas fixed 1200x675
+    const vw = stage.clientWidth;
+    const vh = stage.clientHeight;
 
+    const scale = Math.min(vw / 1200, vh / 675);
+    canvas.style.transform = `scale(${scale})`;
+  }
+  window.addEventListener("resize", scaleToFit);
+
+  /* ====== INIT ====== */
   renderAll();
+  scaleToFit();
 })();
 </script>
 </body>
