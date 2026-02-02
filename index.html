@@ -353,8 +353,8 @@
   const editBox = el("editBox");
   const editInput = el("editInput");
 
-  gridEl.style.setProperty("--rows", ROWS);
-  gridEl.style.setProperty("--cols", COLS);
+document.documentElement.style.setProperty("--rows", ROWS);
+document.documentElement.style.setProperty("--cols", COLS);
 
   /* ====== UTILS ====== */
   const colName = (n) => {
